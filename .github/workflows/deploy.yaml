@@ -31,11 +31,11 @@ jobs:
         run: |
          ls -al templates
          aws cloudformation deploy \
-           --template-file templates/cloudformation.yaml \
-           --stack-name retail-csv-pipeline \
-           --parameter-overrides \
-             InputBucket=retail-input-bucket-123 \
-             OutputBucket=retail-output-bucket-123 \
-             LambdaS3Key=lambda_function.zip \
-           --capabilities CAPABILITY_NAMED_IAM
-
+         aws cloudformation deploy \
+          --template-file templates/cloudformation.yaml \
+          --stack-name retail-csv-pipeline \
+          --parameter-overrides \
+            InputBucket=retail-input-bucket-123 \
+            OutputBucket=retail-output-bucket-123 \
+            LambdaS3Key=lambda_function.zip \
+          --capabilities CAPABILITY_NAMED_IAM
