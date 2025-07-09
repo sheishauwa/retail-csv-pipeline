@@ -16,7 +16,6 @@ def lambda_handler(event, context):
         content = response['Body'].read().decode('utf-8').splitlines()
         reader = csv.DictReader(content)
 
-        # Prepare cleaned data
         cleaned_rows = []
         for row in reader:
             if all(row.get(k) for k in ['sale_id','date','region','product_id','quantity','price']):
@@ -28,7 +27,7 @@ def lambda_handler(event, context):
                 except:
                     continue
 
-        # Convert to JSON and upload
+        # Save cleaned data as JSON
         out_key = key.replace('.csv', '.json')
         json_data = json.dumps(cleaned_rows)
 
