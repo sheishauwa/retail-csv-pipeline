@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Retail CSV Pipeline - Working Version
+Description: Retail CSV Pipeline - Clean and Convert CSV to Parquet
 
 Parameters:
   InputBucket:
@@ -19,8 +19,10 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
       Policies:
         - PolicyName: LambdaS3Policy
           PolicyDocument:
@@ -46,11 +48,11 @@ Resources:
       FunctionName: retail-csv-transformer
       Handler: transform_and_store.lambda_handler
       Runtime: python3.9
+      Timeout: 300
       Role: !GetAtt PipelineRole.Arn
       Code:
         S3Bucket: !Ref InputBucket
         S3Key: !Ref LambdaS3Key
-      Timeout: 300
       Environment:
         Variables:
           OUTPUT_BUCKET: !Ref OutputBucket
@@ -65,4 +67,5 @@ Resources:
 
 Outputs:
   LambdaFunctionArn:
+    Description: ARN of the Lambda function
     Value: !GetAtt CsvTransformerFunction.Arn
