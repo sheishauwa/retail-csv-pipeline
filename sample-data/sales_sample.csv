@@ -1,1 +1,4 @@
-
+sale_id,date,region,product_id,quantity,price
+1,2025-07-01,North,ABC123,2,15.5
+2,2025-07-01,South,XYZ789,1,45.0
+3,2025-07-02,East,ABC123,5,15.5
