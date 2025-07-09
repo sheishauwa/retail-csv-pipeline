@@ -18,3 +18,18 @@ Upload `sales_sample.csv` from `sample-data/` to Input bucket. Verify Parquet ap
 Run:
 ```bash
 $ aws athena start-query-execution --... --query-string "$(cat athena/create_sales_view.sql)"
+
+# Retail CSV to Parquet Pipeline
+
+This project automates the process of:
+
+- Ingesting CSV files uploaded to S3
+- Cleaning and transforming the data
+- Converting the data to Parquet format
+- Storing results in an S3 output bucket
+- Querying with AWS Athena
+- Visualizing with Amazon QuickSight
+
+## 🔄 Last Updated
+
+Deployment triggered on: **$(date)**  <!-- Trigger deployment -->
