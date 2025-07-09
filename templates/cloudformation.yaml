@@ -17,22 +17,30 @@ Resources:
     Properties:
       RoleName: RetailPipelineLambdaRole
       AssumeRolePolicyDocument:
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
-            Principal: { Service: [lambda.amazonaws.com] }
+            Principal:
+              Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
         - PolicyName: LambdaS3Policy
           PolicyDocument:
+            Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action: [s3:GetObject, s3:PutObject]
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
                 Resource:
                   - !Sub arn:aws:s3:::${InputBucket}/*
                   - !Sub arn:aws:s3:::${OutputBucket}/*
               - Effect: Allow
-                Action: [logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents]
-                Resource: '*'
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
 
   CsvTransformerFunction:
     Type: AWS::Lambda::Function
@@ -49,14 +57,47 @@ Resources:
         Variables:
           OUTPUT_BUCKET: !Ref OutputBucket
 
-  LambdaTrigger:
-    Type: AWS::S3::BucketNotification
+  LambdaPermissionForS3:
+    Type: AWS::Lambda::Permission
     Properties:
+      FunctionName: !Ref CsvTransformerFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::${InputBucket}
+
+  InputBucketNotification:
+    Type: Custom::S3Notification
+    DependsOn: LambdaPermissionForS3
+    Properties:
+      ServiceToken: !GetAtt S3NotificationLambda.Arn
       Bucket: !Ref InputBucket
       NotificationConfiguration:
-        LambdaConfigurations:
+        LambdaFunctionConfigurations:
           - Event: "s3:ObjectCreated:*"
             Function: !GetAtt CsvTransformerFunction.Arn
+
+  S3NotificationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: helper-s3-notification
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt PipelineRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+
+          def handler(event, context):
+              s3 = boto3.client('s3')
+              props = event['ResourceProperties']
+              bucket = props['Bucket']
+              config = props['NotificationConfiguration']
+              s3.put_bucket_notification_configuration(
+                  Bucket=bucket,
+                  NotificationConfiguration=config
+              )
+              return { 'Status': 'SUCCESS' }
 
 Outputs:
   LambdaFunctionArn:
