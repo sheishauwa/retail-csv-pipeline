@@ -1,12 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Retail CSV to Parquet pipeline
+Description: Retail CSV Pipeline - Simplified Template
 
 Parameters:
   InputBucket:
     Type: String
   OutputBucket:
-    Type: String
-  AthenaResultsBucket:
     Type: String
   LambdaS3Key:
     Type: String
@@ -57,47 +55,13 @@ Resources:
         Variables:
           OUTPUT_BUCKET: !Ref OutputBucket
 
-  LambdaPermissionForS3:
+  LambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref CsvTransformerFunction
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
       SourceArn: !Sub arn:aws:s3:::${InputBucket}
-
-  InputBucketNotification:
-    Type: Custom::S3Notification
-    DependsOn: LambdaPermissionForS3
-    Properties:
-      ServiceToken: !GetAtt S3NotificationLambda.Arn
-      Bucket: !Ref InputBucket
-      NotificationConfiguration:
-        LambdaFunctionConfigurations:
-          - Event: "s3:ObjectCreated:*"
-            Function: !GetAtt CsvTransformerFunction.Arn
-
-  S3NotificationLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: helper-s3-notification
-      Runtime: python3.9
-      Handler: index.handler
-      Role: !GetAtt PipelineRole.Arn
-      Code:
-        ZipFile: |
-          import json
-          import boto3
-
-          def handler(event, context):
-              s3 = boto3.client('s3')
-              props = event['ResourceProperties']
-              bucket = props['Bucket']
-              config = props['NotificationConfiguration']
-              s3.put_bucket_notification_configuration(
-                  Bucket=bucket,
-                  NotificationConfiguration=config
-              )
-              return { 'Status': 'SUCCESS' }
 
 Outputs:
   LambdaFunctionArn:
