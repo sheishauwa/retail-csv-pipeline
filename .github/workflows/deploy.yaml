@@ -1,41 +1,32 @@
-name: Deploy pipeline
+name: Deploy Retail CSV Pipeline
 
-on: 
+on:
   push:
-    branches: [ main ]
- 
+    branches:
+      - main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Zip Lambda
-        run: |
-          cd lambda
-          zip ../lambda_function.zip transform_and_store.py
-      
-      - uses: aws-actions/configure-aws-credentials@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Upload Lambda zip to S3
-        run: aws s3 cp lambda_function.zip s3://$INPUT_BUCKET/$LAMBDA_S3_KEY
-        env:
-          INPUT_BUCKET: ${{ secrets.INPUT_BUCKET }}
-          LAMBDA_S3_KEY: lambda_function.zip
-
-      - name: Deploy CloudFormation
+      - name: Deploy CloudFormation Stack
         run: |
-         ls -al templates
-         aws cloudformation deploy \
-         aws cloudformation deploy \
-          --template-file templates/cloudformation.yaml \
-          --stack-name retail-csv-pipeline \
-          --parameter-overrides \
-            InputBucket=retail-input-bucket-123 \
-            OutputBucket=retail-output-bucket-123 \
-            LambdaS3Key=lambda_function.zip \
-          --capabilities CAPABILITY_NAMED_IAM
+          aws cloudformation deploy \
+            --template-file templates/cloudformation.yaml \
+            --stack-name retail-csv-pipeline \
+            --parameter-overrides \
+              InputBucket=retail-input-bucket-123 \
+              OutputBucket=retail-output-bucket-123 \
+              LambdaS3Key=lambda_function.zip \
+            --capabilities CAPABILITY_NAMED_IAM
