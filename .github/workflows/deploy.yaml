@@ -30,3 +30,4 @@ jobs:
               OutputBucket=retail-output-bucket-123 \
               LambdaS3Key=lambda_function.zip \
             --capabilities CAPABILITY_NAMED_IAM
+ 
