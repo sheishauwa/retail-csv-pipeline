@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Retail CSV Pipeline - S3 to Lambda to JSON
+Description: Retail CSV Pipeline - Simplified Template
 
 Parameters:
   InputBucket:
@@ -21,6 +21,8 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: LambdaS3Policy
           PolicyDocument:
@@ -33,12 +35,6 @@ Resources:
                 Resource:
                   - !Sub arn:aws:s3:::${InputBucket}/*
                   - !Sub arn:aws:s3:::${OutputBucket}/*
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: "*"
 
   CsvTransformerFunction:
     Type: AWS::Lambda::Function
