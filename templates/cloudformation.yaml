@@ -10,38 +10,6 @@ Parameters:
     Type: String
 
 Resources:
-  PipelineRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: RetailPipelineLambdaRole
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        - PolicyName: LambdaS3Policy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                Resource:
-                  - !Sub arn:aws:s3:::${InputBucket}/*
-                  - !Sub arn:aws:s3:::${OutputBucket}/*
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: "*"
-
   CsvTransformerFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -49,7 +17,7 @@ Resources:
       Handler: transform_and_store.lambda_handler
       Runtime: python3.9
       Timeout: 300
-      Role: !GetAtt PipelineRole.Arn
+      Role: arn:aws:iam::025066276495:role/MyLambdaExecutionRole
       Code:
         S3Bucket: !Ref InputBucket
         S3Key: !Ref LambdaS3Key
