@@ -33,7 +33,9 @@ jobs:
          aws cloudformation deploy \
            --template-file templates/cloudformation.yaml \
            --stack-name retail-csv-pipeline \
-           --parameter-overrides InputBucket=${{ secrets.INPUT_BUCKET }} OutputBucket=${{ secrets.OUTPUT_BUCKET }} AthenaResultsBucket=${{ secrets.ATHENA_RESULTS_BUCKET }} LambdaS3Key=lambda_function.zip \
+           --parameter-overrides \
+             InputBucket=retail-input-bucket-123 \
+             OutputBucket=retail-output-bucket-123 \
+             LambdaS3Key=lambda_function.zip \
            --capabilities CAPABILITY_NAMED_IAM
-
 
