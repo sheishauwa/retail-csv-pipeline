@@ -1,2 +1,63 @@
-templates/
-│   └── cloudformation.ya
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Retail CSV to Parquet pipeline
+
+Parameters:
+  InputBucket:
+    Type: String
+  OutputBucket:
+    Type: String
+  AthenaResultsBucket:
+    Type: String
+  LambdaS3Key:
+    Type: String
+
+Resources:
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: RetailPipelineLambdaRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: { Service: [lambda.amazonaws.com] }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaS3Policy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject]
+                Resource:
+                  - !Sub arn:aws:s3:::${InputBucket}/*
+                  - !Sub arn:aws:s3:::${OutputBucket}/*
+              - Effect: Allow
+                Action: [logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents]
+                Resource: '*'
+
+  CsvTransformerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: retail-csv-transformer
+      Handler: transform_and_store.lambda_handler
+      Runtime: python3.9
+      Role: !GetAtt PipelineRole.Arn
+      Code:
+        S3Bucket: !Ref InputBucket
+        S3Key: !Ref LambdaS3Key
+      Timeout: 300
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+
+  LambdaTrigger:
+    Type: AWS::S3::BucketNotification
+    Properties:
+      Bucket: !Ref InputBucket
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: "s3:ObjectCreated:*"
+            Function: !GetAtt CsvTransformerFunction.Arn
+
+Outputs:
+  LambdaFunctionArn:
+    Value: !GetAtt CsvTransformerFunction.Arn
