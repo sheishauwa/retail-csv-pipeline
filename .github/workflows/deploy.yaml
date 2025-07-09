@@ -29,9 +29,11 @@ jobs:
 
       - name: Deploy CloudFormation
         run: |
-          aws cloudformation deploy \
-            --template-file templates/cloudformation.yaml \
-            --stack-name retail-csv-pipeline \
-            --parameter-overrides InputBucket=${{ secrets.INPUT_BUCKET }} OutputBucket=${{ secrets.OUTPUT_BUCKET }} AthenaResultsBucket=${{ secrets.ATHENA_RESULTS_BUCKET }} LambdaS3Key=lambda_function.zip \
-            --capabilities CAPABILITY_NAMED_IAM
+         ls -al templates
+         aws cloudformation deploy \
+           --template-file templates/cloudformation.yaml \
+           --stack-name retail-csv-pipeline \
+           --parameter-overrides InputBucket=${{ secrets.INPUT_BUCKET }} OutputBucket=${{ secrets.OUTPUT_BUCKET }} AthenaResultsBucket=${{ secrets.ATHENA_RESULTS_BUCKET }} LambdaS3Key=lambda_function.zip \
+           --capabilities CAPABILITY_NAMED_IAM
+
 
