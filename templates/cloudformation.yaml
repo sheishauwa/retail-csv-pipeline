@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Retail CSV Pipeline - Simplified Template
+Description: Retail CSV Pipeline - S3 to Lambda to JSON
 
 Parameters:
   InputBucket:
