@@ -3,7 +3,7 @@ name: Deploy Retail CSV Pipeline
 on:
   push:
     branches:
-      - main
+      - main 
  
 jobs: 
   deploy:
