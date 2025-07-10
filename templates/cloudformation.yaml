@@ -1,4 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Description: Retail CSV to Parquet Pipeline Infrastructure
+
 Resources:
 
   RawBucket:
@@ -23,52 +25,63 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: S3AccessPolicy
+        - PolicyName: RetailLambdaS3Access
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action: 
+                Action:
                   - s3:GetObject
                   - s3:PutObject
-                Resource: arn:aws:s3:::retail-raw-csv-${AWS::AccountId}/*
+                Resource:
+                  - !Sub "arn:aws:s3:::retail-raw-csv-${AWS::AccountId}/*"
+                  - !Sub "arn:aws:s3:::retail-parquet-data-${AWS::AccountId}/*"
               - Effect: Allow
-                Action: 
-                  - s3:PutObject
-                Resource: arn:aws:s3:::retail-parquet-data-${AWS::AccountId}/*
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
 
   TransformFunction:
-  Type: AWS::Lambda::Function
-  Properties:
-    FunctionName: CSVToParquetTransformer
-    Handler: transform_and_store.lambda_handler
-    Role: !GetAtt LambdaRole.Arn
-    Runtime: python3.9
-    Timeout: 60
-    Code:
-      S3Bucket: retail-csv-pipeline-code-YOURNAME
-      S3Key: transform_and_store.zip
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: CSVToParquetTransformer
+      Handler: transform_and_store.lambda_handler
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      Code:
+        S3Bucket: retail-csv-pipeline-code-YOURNAME  # <-- Change to your actual S3 bucket where zip is uploaded
+        S3Key: transform_and_store.zip
 
-LambdaInvokePermission:
-  Type: AWS::Lambda::Permission
-  Properties:
-    FunctionName: !Ref TransformFunction
-    Action: lambda:InvokeFunction
-    Principal: s3.amazonaws.com
-    SourceArn: !GetAtt RawBucket.Arn
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref TransformFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt RawBucket.Arn
 
-RawBucketNotification:
-  Type: AWS::S3::BucketNotification
-  Properties:
-    Bucket: !Ref RawBucket
-    NotificationConfiguration:
-      LambdaConfigurations:
-        - Event: s3:ObjectCreated:*
-          Function: !GetAtt TransformFunction.Arn
-
+  RawBucketNotification:
+    Type: AWS::S3::BucketNotification
+    Properties:
+      Bucket: !Ref RawBucket
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt TransformFunction.Arn
 
 Outputs:
-  RawBucket: 
+
+  RawUploadBucket:
+    Description: S3 bucket where CSV files are uploaded
     Value: !Ref RawBucket
-  ProcessedBucket: 
+
+  ProcessedParquetBucket:
+    Description: S3 bucket where transformed parquet files are stored
     Value: !Ref ProcessedBucket
+
+  LambdaFunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref TransformFunction
