@@ -7,6 +7,10 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "retail-raw-csv-${AWS::AccountId}"
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt TransformFunction.Arn
 
   ProcessedBucket:
     Type: AWS::S3::Bucket
@@ -52,7 +56,7 @@ Resources:
       Runtime: python3.9
       Timeout: 60
       Code:
-        S3Bucket: retail-csv-pipeline-code-YOURNAME  # <-- Change to your actual S3 bucket where zip is uploaded
+        S3Bucket: retail-csv-pipeline-code-YOURNAME  # CHANGE THIS to the actual bucket where your .zip is uploaded
         S3Key: transform_and_store.zip
 
   LambdaInvokePermission:
@@ -62,15 +66,6 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
       SourceArn: !GetAtt RawBucket.Arn
-
-  RawBucketNotification:
-    Type: AWS::S3::BucketNotification
-    Properties:
-      Bucket: !Ref RawBucket
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt TransformFunction.Arn
 
 Outputs:
 
