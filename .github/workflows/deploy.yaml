@@ -24,3 +24,6 @@ jobs:
             --template-file templates/cloudformation.yaml \
             --stack-name RetailCSVPipeline \
             --capabilities CAPABILITY_NAMED_IAM
+            - name: Validate CloudFormation Template
+            run: aws cloudformation validate-template --template-body file://templates/cloudformation.yaml
+
