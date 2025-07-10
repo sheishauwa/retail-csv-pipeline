@@ -1,39 +1,60 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Retail CSV Pipeline - Clean and Convert CSV to Parquet
-
-Parameters:
-  InputBucket:
-    Type: String
-  OutputBucket:
-    Type: String
-  LambdaS3Key:
-    Type: String
-
 Resources:
-  CsvTransformerFunction:
+
+  RawBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: retail-raw-csv-bucket
+
+  ProcessedBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: retail-parquet-data
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: RetailLambdaRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3AccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: arn:aws:s3:::retail-raw-csv-bucket/*
+              - Effect: Allow
+                Action: 
+                  - s3:PutObject
+                Resource: arn:aws:s3:::retail-parquet-data/*
+
+  TransformFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: retail-csv-transformer
+      FunctionName: CSVToParquetTransformer
       Handler: transform_and_store.lambda_handler
+      Role: !GetAtt LambdaRole.Arn
       Runtime: python3.9
-      Timeout: 300
-      Role: arn:aws:iam::123456789012:role/RetailPipelineLambdaRole  # ← REPLACE THIS with your real account ID
+      Timeout: 60
       Code:
-        S3Bucket: !Ref InputBucket
-        S3Key: !Ref LambdaS3Key
-      Environment:
-        Variables:
-          OUTPUT_BUCKET: !Ref OutputBucket
-
-  LambdaInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref CsvTransformerFunction
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !Sub arn:aws:s3:::${InputBucket}
+        S3Bucket: YOUR_CODE_DEPLOY_BUCKET
+        S3Key: lambda/transform_and_store.zip
+      Events:
+        S3UploadEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref RawBucket
+            Events: s3:ObjectCreated:*
 
 Outputs:
-  LambdaFunctionArn:
-    Description: ARN of the Lambda function
-    Value: !GetAtt CsvTransformerFunction.Arn
+  RawBucket: { Value: !Ref RawBucket }
+  ProcessedBucket: { Value: !Ref ProcessedBucket }
