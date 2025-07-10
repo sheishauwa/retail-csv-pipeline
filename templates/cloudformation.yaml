@@ -38,22 +38,34 @@ Resources:
                 Resource: arn:aws:s3:::retail-parquet-data-${AWS::AccountId}/*
 
   TransformFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: CSVToParquetTransformer
-      Handler: transform_and_store.lambda_handler
-      Role: !GetAtt LambdaRole.Arn
-      Runtime: python3.9
-      Timeout: 60
-      Code:
-        S3Bucket: retail-csv-pipeline-code-YOURNAME
-        S3Key: transform_and_store.zip
-      Events:
-        S3UploadEvent:
-          Type: S3
-          Properties:
-            Bucket: !Ref RawBucket
-            Events: s3:ObjectCreated:*
+  Type: AWS::Lambda::Function
+  Properties:
+    FunctionName: CSVToParquetTransformer
+    Handler: transform_and_store.lambda_handler
+    Role: !GetAtt LambdaRole.Arn
+    Runtime: python3.9
+    Timeout: 60
+    Code:
+      S3Bucket: retail-csv-pipeline-code-YOURNAME
+      S3Key: transform_and_store.zip
+
+LambdaInvokePermission:
+  Type: AWS::Lambda::Permission
+  Properties:
+    FunctionName: !Ref TransformFunction
+    Action: lambda:InvokeFunction
+    Principal: s3.amazonaws.com
+    SourceArn: !GetAtt RawBucket.Arn
+
+RawBucketNotification:
+  Type: AWS::S3::BucketNotification
+  Properties:
+    Bucket: !Ref RawBucket
+    NotificationConfiguration:
+      LambdaConfigurations:
+        - Event: s3:ObjectCreated:*
+          Function: !GetAtt TransformFunction.Arn
+
 
 Outputs:
   RawBucket: 
