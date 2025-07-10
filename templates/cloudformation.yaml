@@ -2,14 +2,14 @@ AWSTemplateFormatVersion: '2010-09-09'
 Resources:
 
   RawBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: retail-raw-csv-bucket
+  Type: AWS::S3::Bucket
+  Properties:
+    BucketName: !Sub "retail-raw-csv-${AWS::AccountId}-projecteg"
 
-  ProcessedBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: retail-parquet-data
+ProcessedBucket:
+  Type: AWS::S3::Bucket
+  Properties:
+    BucketName: !Sub "retail-parquet-data-${AWS::AccountId}-projecteg"
 
   LambdaRole:
     Type: AWS::IAM::Role
