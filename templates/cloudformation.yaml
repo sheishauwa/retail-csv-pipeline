@@ -46,8 +46,8 @@ Resources:
       Runtime: python3.9
       Timeout: 60
       Code:
-        S3Bucket: YOUR_CODE_DEPLOY_BUCKET
-        S3Key: lambda/transform_and_store.zip
+        S3Bucket: retail-csv-pipeline-code
+        S3Key: transform_and_store.zip
       Events:
         S3UploadEvent:
           Type: S3
