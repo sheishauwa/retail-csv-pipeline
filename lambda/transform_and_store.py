@@ -1,36 +1,35 @@
-import os
 import boto3
-import csv
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import io
-import json
-
-s3 = boto3.client('s3')
-OUTPUT_BUCKET = os.environ['OUTPUT_BUCKET']
 
 def lambda_handler(event, context):
-    for rec in event['Records']:
-        bucket = rec['s3']['bucket']['name']
-        key = rec['s3']['object']['key']
+    s3 = boto3.client('s3')
 
-        response = s3.get_object(Bucket=bucket, Key=key)
-        content = response['Body'].read().decode('utf-8').splitlines()
-        reader = csv.DictReader(content)
+    # Get the uploaded file details
+    bucket = event['Records'][0]['s3']['bucket']['name']
+    key = event['Records'][0]['s3']['object']['key']
 
-        cleaned_rows = []
-        for row in reader:
-            if all(row.get(k) for k in ['sale_id','date','region','product_id','quantity','price']):
-                try:
-                    quantity = int(float(row['quantity']))
-                    price = float(row['price'])
-                    row['total'] = round(quantity * price, 2)
-                    cleaned_rows.append(row)
-                except:
-                    continue
+    obj = s3.get_object(Bucket=bucket, Key=key)
+    df = pd.read_csv(obj['Body'])
 
-        # Save cleaned data as JSON
-        out_key = key.replace('.csv', '.json')
-        json_data = json.dumps(cleaned_rows)
+    # Basic cleaning
+    df.dropna(inplace=True)  # remove rows with missing values
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+    df = df.dropna(subset=['date'])  # remove rows with invalid dates
 
-        s3.put_object(Bucket=OUTPUT_BUCKET, Key=out_key, Body=json_data)
+    # Convert to Parquet
+    table = pa.Table.from_pandas(df)
+    out_buffer = io.BytesIO()
+    pq.write_table(table, out_buffer)
 
-    return {'status': 'success'}
+    # Upload to processed bucket
+    processed_key = key.replace('.csv', '.parquet')
+    s3.put_object(
+        Bucket='retail-parquet-data',
+        Key=processed_key,
+        Body=out_buffer.getvalue()
+    )
+
+    return {'statusCode': 200, 'body': 'Transformation complete'}
