@@ -5,6 +5,10 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: retail-sales-data-hauwa
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt CsvTransformFunction.Arn
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -38,8 +42,8 @@ Resources:
       Handler: transform_csv.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: YOUR_LAMBDA_ZIP_BUCKET
-        S3Key: lambda/transform_csv.zip
+        S3Bucket: datapiplines3  # Replace with your bucket name
+        S3Key: lambda/transform_csv.zip   # Ensure this file is uploaded
       Runtime: python3.10
       Timeout: 60
       MemorySize: 512
@@ -51,12 +55,3 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
       SourceArn: !GetAtt RetailDataBucket.Arn
-
-  S3Notification:
-    Type: AWS::S3::BucketNotification
-    Properties:
-      Bucket: !Ref RetailDataBucket
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt CsvTransformFunction.Arn
