@@ -1,62 +1,28 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Resources:
+name: Deploy CloudFormation Stack
 
-  RetailDataBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: retail-sales-data-hauwa
+on:
+  push:
+    branches:
+      - main
 
-  LambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: retail-lambda-execution-role
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: LambdaS3Policy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: "*"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-  CsvTransformFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: RetailCsvTransform
-      Handler: transform_csv.lambda_handler
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Code:
-        S3Bucket: YOUR_LAMBDA_ZIP_BUCKET
-        S3Key: lambda/transform_csv.zip
-      Runtime: python3.10
-      Timeout: 60
-      MemorySize: 512
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-  LambdaInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref CsvTransformFunction
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt RetailDataBucket.Arn
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-  S3Notification:
-    Type: AWS::S3::BucketNotification
-    Properties:
-      Bucket: !Ref RetailDataBucket
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt CsvTransformFunction.Arn
+    - name: Deploy CloudFormation Template
+      run: |
+        aws cloudformation deploy \
+          --template-file cloudformation/template.yaml \
+          --stack-name RetailPipelineStack \
+          --capabilities CAPABILITY_NAMED_IAM
