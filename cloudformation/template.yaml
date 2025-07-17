@@ -20,7 +20,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: S3InvokePolicy
+        - PolicyName: LambdaS3Policy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -30,6 +30,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                   - s3:GetObject
+                  - s3:PutBucketNotification
                 Resource: "*"
 
   CsvTransformFunction:
@@ -39,31 +40,10 @@ Resources:
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: datapiplines3         # Replace with actual bucket name
-        S3Key: lambda/transform_csv.zip      # Replace with actual file name
+        S3Bucket: datapiplines3         # Make sure this exists
+        S3Key: lambda/transform_csv.zip
       Runtime: python3.9
       Timeout: 60
-
-  LambdaInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt CsvTransformFunction.Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt RetailDataBucket.Arn
-
-  S3BucketNotification:
-    Type: Custom::S3BucketNotification
-    DependsOn:
-      - LambdaInvokePermission
-      - CsvTransformFunction
-    Properties:
-      ServiceToken: !GetAtt BucketNotificationLambda.Arn
-      Bucket: !Ref RetailDataBucket
-      NotificationConfiguration:
-        LambdaFunctionConfigurations:
-          - Event: s3:ObjectCreated:*
-            LambdaFunctionArn: !GetAtt CsvTransformFunction.Arn
 
   BucketNotificationLambda:
     Type: AWS::Lambda::Function
@@ -92,3 +72,24 @@ Resources:
               except Exception as e:
                   print(e)
                   cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt CsvTransformFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt RetailDataBucket.Arn
+
+  S3BucketNotification:
+    Type: Custom::S3BucketNotification
+    DependsOn:
+      - LambdaInvokePermission
+      - CsvTransformFunction
+    Properties:
+      ServiceToken: !GetAtt BucketNotificationLambda.Arn
+      Bucket: !Ref RetailDataBucket
+      NotificationConfiguration:
+        LambdaFunctionConfigurations:
+          - Event: s3:ObjectCreated:*
+            LambdaFunctionArn: !GetAtt CsvTransformFunction.Arn
