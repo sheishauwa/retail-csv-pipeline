@@ -19,11 +19,16 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
-
+    - name: Debug - List directory contents
+      run: ls -R
+    
+    - name: Debug - Show current working directory
+      run: pwd
+    
     - name: Deploy CloudFormation Template
       run: |
+        echo "Deploying CloudFormation..."
         aws cloudformation deploy \
           --template-file cloudformation/template.yaml \
           --stack-name RetailPipelineStack \
           --capabilities CAPABILITY_NAMED_IAM
-
