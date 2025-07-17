@@ -1,57 +1,94 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Description: Retail Data Pipeline Stack
+
 Resources:
 
   RetailDataBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: retail-sales-data-hauwa
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt CsvTransformFunction.Arn
+      BucketName: retail-data-bucket-ha123
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: retail-lambda-execution-role
+      RoleName: lambda-s3-execution-role
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: LambdaS3Policy
+        - PolicyName: S3InvokePolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - s3:GetObject
-                  - s3:PutObject
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
+                  - s3:GetObject
                 Resource: "*"
 
   CsvTransformFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: RetailCsvTransform
-      Handler: transform_csv.lambda_handler
+      FunctionName: csv-transform-function
+      Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: datapiplines3  # Replace with your bucket name
-        S3Key: lambda/transform_csv.zip   # Ensure this file is uploaded
-      Runtime: python3.10
+        S3Bucket: datapiplines3         # Replace with actual bucket name
+        S3Key: lambda/transform_csv.zip      # Replace with actual file name
+      Runtime: python3.9
       Timeout: 60
-      MemorySize: 512
 
   LambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref CsvTransformFunction
+      FunctionName: !GetAtt CsvTransformFunction.Arn
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
       SourceArn: !GetAtt RetailDataBucket.Arn
+
+  S3BucketNotification:
+    Type: Custom::S3BucketNotification
+    DependsOn:
+      - LambdaInvokePermission
+      - CsvTransformFunction
+    Properties:
+      ServiceToken: !GetAtt BucketNotificationLambda.Arn
+      Bucket: !Ref RetailDataBucket
+      NotificationConfiguration:
+        LambdaFunctionConfigurations:
+          - Event: s3:ObjectCreated:*
+            LambdaFunctionArn: !GetAtt CsvTransformFunction.Arn
+
+  BucketNotificationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: bucket-notification-handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Handler: index.handler
+      Runtime: python3.9
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+
+          def handler(event, context):
+              s3 = boto3.client('s3')
+              props = event['ResourceProperties']
+              try:
+                  s3.put_bucket_notification_configuration(
+                      Bucket=props['Bucket'],
+                      NotificationConfiguration={
+                          'LambdaFunctionConfigurations': props['NotificationConfiguration']['LambdaFunctionConfigurations']
+                      }
+                  )
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  print(e)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
