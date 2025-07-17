@@ -1,5 +1,8 @@
 name: Deploy CloudFormation Stack
 
+env:
+  ACTIONS_STEP_DEBUG: true
+
 on:
   push:
     branches:
@@ -8,7 +11,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
- 
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -19,12 +22,10 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
-    - name: Debug - List directory contents
+
+    - name: Debug - List project contents
       run: ls -R
-    
-    - name: Debug - Show current working directory
-      run: pwd
-    
+
     - name: Deploy CloudFormation Template
       run: |
         echo "Deploying CloudFormation..."
