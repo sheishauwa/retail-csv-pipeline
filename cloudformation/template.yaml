@@ -1,1 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  RetailDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: retail-sales-data-hauwa
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: retail-lambda-execution-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaS3Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: arn:aws:s3:::retail-sales-data-hauwa/*
+
+  CsvTransformFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: RetailCsvTransform
+      Handler: transform_csv.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: YOUR_LAMBDA_ZIP_BUCKET
+        S3Key: lambda/transform_csv.zip
+      Runtime: python3.10
+      Timeout: 60
+      MemorySize: 512
+      Events:
+        S3UploadTrigger:
+          Type: S3
+          Properties:
+            Bucket: !Ref RetailDataBucket
+            Events: s3:ObjectCreated:*
 
