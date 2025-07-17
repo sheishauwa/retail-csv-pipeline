@@ -20,7 +20,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: LambdaS3Policy
+        - PolicyName: S3InvokePolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -40,10 +40,18 @@ Resources:
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: datapiplines3         # Make sure this exists
-        S3Key: lambda/transform_csv.zip
+        S3Bucket: datapiplines3         # replace with your actual code bucket
+        S3Key: lambda/transform_csv.zip # replace with your zip path
       Runtime: python3.9
       Timeout: 60
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt CsvTransformFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt RetailDataBucket.Arn
 
   BucketNotificationLambda:
     Type: AWS::Lambda::Function
@@ -52,6 +60,7 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Handler: index.handler
       Runtime: python3.9
+      Timeout: 30
       Code:
         ZipFile: |
           import json
@@ -59,6 +68,7 @@ Resources:
           import cfnresponse
 
           def handler(event, context):
+              print("Event:", json.dumps(event))
               s3 = boto3.client('s3')
               props = event['ResourceProperties']
               try:
@@ -70,16 +80,8 @@ Resources:
                   )
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
               except Exception as e:
-                  print(e)
+                  print("Error:", str(e))
                   cfnresponse.send(event, context, cfnresponse.FAILED, {})
-
-  LambdaInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt CsvTransformFunction.Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt RetailDataBucket.Arn
 
   S3BucketNotification:
     Type: Custom::S3BucketNotification
@@ -91,5 +93,6 @@ Resources:
       Bucket: !Ref RetailDataBucket
       NotificationConfiguration:
         LambdaFunctionConfigurations:
-          - Event: s3:ObjectCreated:*
+          - Events:
+              - s3:ObjectCreated:*
             LambdaFunctionArn: !GetAtt CsvTransformFunction.Arn
