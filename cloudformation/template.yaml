@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Resources:
+
   RetailDataBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -25,7 +26,10 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
-                Resource: arn:aws:s3:::retail-sales-data-hauwa/*
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
 
   CsvTransformFunction:
     Type: AWS::Lambda::Function
@@ -39,10 +43,20 @@ Resources:
       Runtime: python3.10
       Timeout: 60
       MemorySize: 512
-      Events:
-        S3UploadTrigger:
-          Type: S3
-          Properties:
-            Bucket: !Ref RetailDataBucket
-            Events: s3:ObjectCreated:*
 
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CsvTransformFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt RetailDataBucket.Arn
+
+  S3Notification:
+    Type: AWS::S3::BucketNotification
+    Properties:
+      Bucket: !Ref RetailDataBucket
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt CsvTransformFunction.Arn
